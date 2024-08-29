@@ -17,7 +17,7 @@ int main(int argc, char **argv)
     }
     if(fval[H].bl || fval[HELP].bl){
         printHelp();
-        return EXIT;
+        return GOOD;
     }
 
     char infname [MAXFILENAME] = {};

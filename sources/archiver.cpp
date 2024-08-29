@@ -9,13 +9,13 @@ void encode(FILE* infile, FILE* outfile)
 {
     assert(infile  != NULL);
     assert(outfile != NULL);
-    fputs("cre\n", outfile);
+    fputs("cre", outfile);
 
     unsigned char count = 0;
     int lastsymbol = EOF;
     bool aresame = false;
 
-    char base[MAXBLOCKLEN] = {};
+    unsigned char base[MAXBLOCKLEN] = {};
     int ch = 0;
     while ((ch = fgetc(infile)) != EOF)
     {
@@ -60,15 +60,15 @@ void encode(FILE* infile, FILE* outfile)
     encodeBlock(outfile, base, aresame, count);
 }
 
-void encodeBlock(FILE* out, char *base, int aresame, unsigned char count)
+void encodeBlock(FILE* out, unsigned char *base, int aresame, unsigned char count)
 {
     fputc(codedByte(aresame, count), out);
     if (aresame)
         fputc(base[0], out);
     else
     {
-        base[count] = '\0';
-        fputs(base, out);
+        for (int i = 0; i < count; i++)
+            fputc(base[i], out);
     }
 }
 
@@ -76,8 +76,8 @@ int decode(FILE* infile, FILE* outfile)
 {
     int ch = 0;
     char name[10] = {};
-    fgets(name, 10, infile);
-    if (strcmp(name, "cre\n") != 0)
+    fgets(name, 4, infile);
+    if (strcmp(name, "cre") != 0)
         return -1;
     while((ch = fgetc(infile)) != EOF)
     {
