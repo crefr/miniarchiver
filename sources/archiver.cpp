@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
+#include <string.h>
 
 #include "archiver.h"
 
@@ -10,28 +11,24 @@ void encode(FILE* infile, FILE* outfile)
     assert(outfile != NULL);
     fputs("cre\n", outfile);
 
-    int ch = 0;
     unsigned char count = 0;
     int lastsymbol = EOF;
     bool aresame = false;
 
     char base[128] = {};
+    int ch = 0;
     while ((ch = fgetc(infile)) != EOF)
     {
         if (ch == lastsymbol)
         {
             if (aresame)
             {
-                //printf("%d\n",count);
-                count+=1;
+                count++;
             }
             else
             {
-                //printf("%d\n",count);
+                encodeBlock(outfile, base, aresame, count);
                 aresame = true;
-                base[count] = '\0';
-                fputc(codedByte(0, count), outfile);
-                fputs(base, outfile);
                 base[0] = (char) ch;
                 count = 1;
             }
@@ -40,52 +37,77 @@ void encode(FILE* infile, FILE* outfile)
         {
             if(aresame)
             {
-                //printf("%d\n",count);
+                encodeBlock(outfile, base, aresame, count);
                 aresame = false;
-                fputc(codedByte(1, count), outfile);
-                fputc(base[0], outfile);
+                base[0] = (char) ch;
                 count = 1;
-                base[count] = (char) ch;
             }
             else
             {
-                //printf("%d\n",count);
-                count += 1;
                 base[count] =(char) ch;
-                putchar (ch);
+                count++;
             }
         }
         lastsymbol = ch;
     }
-    if(aresame)
-    {
-        fputc(codedByte(1, count), outfile);
-        fputc(base[0], outfile);
-        count = 1;
-        base[count] = (char) ch;
-    }
+    encodeBlock(outfile, base, aresame, count);
+}
+
+void encodeBlock(FILE* out, char *base, int aresame, unsigned char count)
+{
+    fputc(codedByte(aresame, count), out);
+    if (aresame)
+        fputc(base[0], out);
     else
     {
         base[count] = '\0';
-        fputc(codedByte(0, count), outfile);
-        fputs(base, outfile);
-        base[0] = (char) ch;
-        count = 1;
+        fputs(base, out);
     }
-    fputc(EOF, outfile);
 }
 
-unsigned char codedByte(bool isrep, unsigned char count)
+int decode(FILE* infile, FILE* outfile)
 {
-    printf("%d\n",count);
-    assert(count <= 129);
+    int ch = 0;
+    char name[10] = {};
+    fgets(name, 10, infile);
+    if (strcmp(name, "cre\n") != 0)
+        return -1;
+    while((ch = fgetc(infile)) != EOF)
+    {
+        unsigned char count = 0;
+        if (decodeByte((unsigned char)ch, &count))
+        {
+            ch = fgetc(infile);
+            for (int i = 0; i < count; i++)
+                fputc(ch, outfile);
+        }
+        else
+        {
+            for (int i = 0; i < count; i++)
+                fputc(ch = fgetc(infile), outfile);
+        }
+    }
+    return 0;
+}
+
+unsigned char codedByte(int isrep, unsigned char count)
+{
+    assert(count <= 127);
     unsigned char ans = 0;
     if (isrep)
     {
         ans += 1<<7;
-        ans += count - 2;
-        return count;
+        ans += count; // - 2;
+        return ans;
     }
-    ans += count - 1;
+    ans += count; //- 1;
     return ans;
+}
+
+int decodeByte(unsigned char byte, unsigned char *count)
+{
+    *count = (byte & ((1<<7) - 1));
+    if ((byte & (1<<7)) == 0)
+        return 0;
+    return 1;
 }
