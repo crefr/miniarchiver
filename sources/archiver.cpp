@@ -4,7 +4,7 @@
 #include <string.h>
 
 #include "archiver.h"
-
+const int MAXBLOCKLEN = 127;
 void encode(FILE* infile, FILE* outfile)
 {
     assert(infile  != NULL);
@@ -15,18 +15,16 @@ void encode(FILE* infile, FILE* outfile)
     int lastsymbol = EOF;
     bool aresame = false;
 
-    char base[128] = {};
+    char base[MAXBLOCKLEN] = {};
     int ch = 0;
     while ((ch = fgetc(infile)) != EOF)
     {
-        if (count > 126)
+        if (count > MAXBLOCKLEN-1)
         {
             encodeBlock(outfile, base, aresame, count);
-            if (aresame)
-                aresame = 0;
-            else
-                aresame = 1;
+            aresame = 0;
             count = 0;
+            lastsymbol = EOF;
         }
         if (ch == lastsymbol)
         {
@@ -106,10 +104,10 @@ unsigned char codedByte(int isrep, unsigned char count)
     if (isrep)
     {
         ans += 1<<7;
-        ans += count; // - 2;
+        ans += count;
         return ans;
     }
-    ans += count; //- 1;
+    ans += count;
     return ans;
 }
 

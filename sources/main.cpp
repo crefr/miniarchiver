@@ -1,51 +1,61 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
+#include <string.h>
 
 #include "archiver.h"
+#include "argvprocessing.h"
 
 const int MAXFILENAME = 100;
 
 int main(int argc, char **argv)
 {
-    if (argc != 2)
-    {
-        printf("incorrect cmd args, type e to encode and d to decode\n");
-        return -1;
+    fvals fval[ARGVNUM] = {};
+    if (argvReceive(argc, argv, fval) == BAD){
+        printf("invalid cmd args\n");
+        return BAD;
+    }
+    if(fval[H].bl || fval[HELP].bl){
+        printHelp();
+        return EXIT;
     }
 
     char infname [MAXFILENAME] = {};
     char outfname[MAXFILENAME] = {};
 
-    printf("type name of in file\n");
-    scanf("%s", infname);
-
-    printf("type name of out file\n");
-    scanf("%s", outfname);
+    strcpy(infname, fval[I].str);
+    if (fval[O].str[0] != '\0')
+        strcpy(outfname, fval[O].str);
+    else
+    {
+        size_t index = strchr(fval[I].str, '.') - fval[I].str;
+        strncpy(outfname, fval[I].str, index);
+        if (fval[E].bl)
+            strcpy(outfname + index, ".cre");
+        else
+            strcpy(outfname + index, ".txt");
+    }
 
     FILE *in  = fopen(infname,  "rb");
     FILE *out = fopen(outfname, "wb");
-
     assert(in  != NULL);
     assert(out != NULL);
 
-    if (argv[1][0] == 'e')
-    {
-        encode(in, out);
+    if (fval[D].bl && fval[E].bl){
+        printf("cmd args error\n");
+        return BAD;
     }
-    else if (argv[1][0] == 'd')
-    {
+    else if (fval[D].bl){
         if (decode(in, out) == -1)
         {
             printf("wrong input file format\n");
-            return -1;
+            return BAD;
         }
     }
-    else
-    {
-        printf("incorrect cmd args, type e to encode and d to decode\n");
-        return -1;
+    else if (fval[E].bl){
+        encode(in, out);
     }
+
     fclose(in);
     fclose(out);
     return 0;

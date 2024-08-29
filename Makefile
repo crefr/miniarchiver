@@ -12,13 +12,16 @@ CFLAGS = -c -Wshadow -Winit-self -Wredundant-decls -Wcast-align -Wundef -Wfloat-
 		 -Wstrict-null-sentinel -Wtype-limits -Wwrite-strings -Werror=vla -D_DEBUG -D_EJUDGE_CLIENT_SIDE				\
 		 -I./$(HEADDIR)
 
-$(FILENAME): $(OBJDIR)main.o $(OBJDIR)archiver.o
+$(FILENAME): $(OBJDIR)main.o $(OBJDIR)archiver.o $(OBJDIR)argvprocessing.o
 	$(CC) $^ -o $@
 
-$(OBJDIR)main.o: $(SRCDIR)main.cpp $(HEADDIR)archiver.h
+$(OBJDIR)main.o: $(SRCDIR)main.cpp $(HEADDIR)archiver.h $(HEADDIR)argvprocessing.h
 	$(CC) $(CFLAGS) $< -o $@
 
 $(OBJDIR)archiver.o: $(SRCDIR)archiver.cpp $(HEADDIR)archiver.h
+	$(CC) $(CFLAGS) $< -o $@
+
+$(OBJDIR)argvprocessing.o: $(SRCDIR)argvprocessing.cpp $(HEADDIR)argvprocessing.h
 	$(CC) $(CFLAGS) $< -o $@
 
 
