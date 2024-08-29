@@ -19,6 +19,15 @@ void encode(FILE* infile, FILE* outfile)
     int ch = 0;
     while ((ch = fgetc(infile)) != EOF)
     {
+        if (count > 126)
+        {
+            encodeBlock(outfile, base, aresame, count);
+            if (aresame)
+                aresame = 0;
+            else
+                aresame = 1;
+            count = 0;
+        }
         if (ch == lastsymbol)
         {
             if (aresame)
