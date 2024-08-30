@@ -21,7 +21,7 @@ void encode(FILE* infile, FILE* outfile)
     while((signCh = SIGNATURE[signIndex++]) != '\0')
         fputc(signCh, outfile);
 
-    int *base = (int *) calloc(bytesinblock * MAXBLOCKLEN + 100, sizeof(int));
+    int *base = (int *) calloc(bytesinblock * MAXBLOCKLEN, sizeof(int));
     int *bytes = (int *) calloc(bytesinblock, sizeof(int));
     int *lastbytes = (int *) calloc(bytesinblock, sizeof(int));
 
