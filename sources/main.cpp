@@ -20,6 +20,8 @@ int main(int argc, char **argv)
         return GOOD;
     }
 
+    setBytesInblock(6);
+
     char infname [MAXFILENAME] = {};
     char outfname[MAXFILENAME] = {};
 
