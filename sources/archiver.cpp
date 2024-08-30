@@ -4,58 +4,76 @@
 #include <string.h>
 
 #include "archiver.h"
+
+const char *SIGNATURE = "cre";
+const int   SIGNLEN = sizeof(SIGNATURE) / sizeof(char);
 const int MAXBLOCKLEN = 127;
+
+/// @brief количество байт в одном мини блоке
+static int bytesinblock = 1;
+
 void encode(FILE* infile, FILE* outfile)
 {
     assert(infile  != NULL);
     assert(outfile != NULL);
-    fputs("cre", outfile);
+    fputs(SIGNATURE, outfile);
 
     unsigned char count = 0;
-    int lastsymbol = EOF;
+    int *lastbytes = (int *) calloc(bytesinblock, sizeof(char));
+    for(int i = 0; i < bytesinblock; i++)
+        lastbytes[i] = EOF;
     bool aresame = false;
 
-    unsigned char base[MAXBLOCKLEN] = {};
-    int ch = 0;
-    while ((ch = fgetc(infile)) != EOF)
+    //unsigned char base[MAXBLOCKLEN] = {};
+    unsigned char *base = (unsigned char *) calloc(bytesinblock * MAXBLOCKLEN, sizeof(char));
+    int *bytes = (int *) calloc(bytesinblock, sizeof(char));
+    bool theend = false;
+
+    while (!theend)
     {
-        if (count > MAXBLOCKLEN-1)
-        {
+        for (int i = 0; i < bytesinblock; i++){
+            int byte = fgetc(infile);
+            bytes[i] = byte;
+            if (feof(infile))
+                theend = true;
+        }
+        if (theend)
+            break;
+        if (count > MAXBLOCKLEN-1){
             encodeBlock(outfile, base, aresame, count);
             aresame = 0;
             count = 0;
-            lastsymbol = EOF;
+            for (int i = 0; i < bytesinblock; i++)
+                lastbytes[i] = EOF;
         }
-        if (ch == lastsymbol)
-        {
-            if (aresame)
-            {
+        if (memcmp(bytes, lastbytes, bytesinblock) == 0){
+            if (aresame){
                 count++;
             }
-            else
-            {
+            else{
                 encodeBlock(outfile, base, aresame, count);
                 aresame = true;
-                base[0] = (char) ch;
+                for(int i = 0; i < bytesinblock; i++)
+                    base[i] = (char) bytes[i];
                 count = 1;
             }
         }
-        else
-        {
-            if(aresame)
-            {
+        else{
+            if(aresame){
                 encodeBlock(outfile, base, aresame, count);
                 aresame = false;
-                base[0] = (char) ch;
+                for(int i = 0; i < bytesinblock; i++)
+                    base[i] = (char) bytes[i];
                 count = 1;
             }
-            else
-            {
-                base[count] =(char) ch;
+            else{
+                for(int i = 0; i < bytesinblock; i++)
+                    base[i + count * bytesinblock] = (char) bytes[i];
                 count++;
             }
         }
-        lastsymbol = ch;
+        for (int i = 0; i < bytesinblock; i++)
+            lastbytes[i] = bytes[i];
     }
     encodeBlock(outfile, base, aresame, count);
 }
@@ -64,34 +82,45 @@ void encodeBlock(FILE* out, unsigned char *base, int aresame, unsigned char coun
 {
     fputc(codedByte(aresame, count), out);
     if (aresame)
-        fputc(base[0], out);
+        for(int byteindex = 0; byteindex < bytesinblock; byteindex++)
+            fputc(base[byteindex], out);
     else
     {
-        for (int i = 0; i < count; i++)
-            fputc(base[i], out);
+        for (int baseindex = 0; baseindex < count; baseindex++)
+            for(int byteindex = 0; byteindex < bytesinblock; byteindex++)
+                fputc(base[byteindex + baseindex], out);
     }
 }
 
 int decode(FILE* infile, FILE* outfile)
 {
-    int ch = 0;
-    char name[10] = {};
+    int codedbyte = 0;
+    int *bytes = (int *) calloc(bytesinblock, sizeof(char));
+
+    char name[4] = {};
     fgets(name, 4, infile);
-    if (strcmp(name, "cre") != 0)
+    if (strcmp(name, SIGNATURE) != 0)
         return -1;
-    while((ch = fgetc(infile)) != EOF)
+    while((codedbyte = fgetc(infile)) != EOF)
     {
         unsigned char count = 0;
-        if (decodeByte((unsigned char)ch, &count))
+        if (decodeByte((unsigned char)codedbyte, &count))
         {
-            ch = fgetc(infile);
+            for(int byteindex = 0; byteindex < bytesinblock; byteindex++)
+                bytes[byteindex] = fgetc(infile);
             for (int i = 0; i < count; i++)
-                fputc(ch, outfile);
+                for(int byteindex = 0; byteindex < bytesinblock; byteindex++)
+                    fputc(bytes[byteindex], outfile);
         }
         else
         {
             for (int i = 0; i < count; i++)
-                fputc(ch = fgetc(infile), outfile);
+            {
+                for(int byteindex = 0; byteindex < bytesinblock; byteindex++)
+                    bytes[byteindex] = fgetc(infile);
+                for(int byteindex = 0; byteindex < bytesinblock; byteindex++)
+                    fputc(bytes[byteindex], outfile);
+            }
         }
     }
     return 0;
@@ -118,3 +147,9 @@ int decodeByte(unsigned char byte, unsigned char *count)
         return 0;
     return 1;
 }
+
+void setBytesInblock(int bytes)
+{
+    bytesinblock = bytes;
+}
+
